@@ -77,12 +77,12 @@ void rotateWithQuaternion(VectorFloat *vector, const Quaternion *q)
 
 
 
-float getMagnitude()
+float getMagnitude(const VectorFloat a)
 {
-    return sqrt(w * w + x * x + y * y + z * z);
+    return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
 }
 
-VectorFloat getDifference(const VectorFloat& a, const VectorFloat& b) {
+VectorFloat getDifference(const VectorFloat a, const VectorFloat b) {
     VectorFloat result;
     result.x = a.x - b.x;
     result.y = a.y - b.y;
@@ -90,7 +90,7 @@ VectorFloat getDifference(const VectorFloat& a, const VectorFloat& b) {
     return result;
 }
 
-float getDistance(const VectorFloat& a, const VectorFloat& b) {
+float getDistance(const VectorFloat a, const VectorFloat b) {
     return getMagnitude(getDifference(a, b));
 }
 

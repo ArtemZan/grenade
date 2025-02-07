@@ -2015,7 +2015,6 @@ static esp_err_t mpu6050_write(mpu6050_handle_t sensor, const uint8_t reg_start_
     assert(ESP_OK == ret);
     ret = i2c_master_cmd_begin(sens->bus, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
-
     return ret;
 }
 
@@ -3230,10 +3229,15 @@ esp_err_t mpu6050_init(mpu6050_handle_t *const mpu6050, i2c_port_t port, int SDA
     esp_err_t ret;
     uint8_t mpu6050_deviceid;
 
-    i2c_bus_init(port, SDA_pin, SCL_pin, I2C_frequency);
+    ESP_LOGI(TAG, "i2c_bus_init");
+    // Not calling, because the bus has already been initialized by the ssd1306 library
+    //i2c_bus_init(port, SDA_pin, SCL_pin, I2C_frequency);
+
+    ESP_LOGI(TAG, "mpu6050_create");
     *mpu6050 = mpu6050_create(port, MPU6050_I2C_ADDRESS);
     TEST_ASSERT_NOT_NULL_MESSAGE(mpu6050, "MPU6050 create returned NULL");
 
+    ESP_LOGI(TAG, "mpu6050_config");
     ret = mpu6050_config(*mpu6050, ACCE_FS_4G, GYRO_FS_500DPS);
     TEST_ASSERT_EQUAL(ESP_OK, ret);
 
