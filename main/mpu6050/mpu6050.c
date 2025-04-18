@@ -3231,7 +3231,7 @@ esp_err_t mpu6050_init(mpu6050_handle_t *const mpu6050, i2c_port_t port, int SDA
 
     ESP_LOGI(TAG, "i2c_bus_init");
     // Not calling, because the bus has already been initialized by the ssd1306 library
-    //i2c_bus_init(port, SDA_pin, SCL_pin, I2C_frequency);
+    i2c_bus_init(port, SDA_pin, SCL_pin, I2C_frequency);
 
     ESP_LOGI(TAG, "mpu6050_create");
     *mpu6050 = mpu6050_create(port, MPU6050_I2C_ADDRESS);
