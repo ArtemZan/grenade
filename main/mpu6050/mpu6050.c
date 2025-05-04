@@ -29,7 +29,6 @@
 #define MPU6050_ACCEL_XOUT_H 0x3Bu
 #define MPU6050_GYRO_XOUT_H 0x43u
 #define MPU6050_TEMP_XOUT_H 0x41u
-#define MPU6050_PWR_MGMT_1 0x6Bu
 #define MPU6050_WHO_AM_I 0x75u
 
 const char *TAG = "mpu6050";
@@ -2071,13 +2070,13 @@ esp_err_t mpu6050_wake_up(mpu6050_handle_t sensor)
 {
     esp_err_t ret;
     uint8_t tmp;
-    ret = mpu6050_read(sensor, MPU6050_PWR_MGMT_1, &tmp, 1);
+    ret = mpu6050_read(sensor, MPU6050_RA_PWR_MGMT_1, &tmp, 1);
     if (ESP_OK != ret)
     {
         return ret;
     }
     tmp &= (~BIT6);
-    ret = mpu6050_write(sensor, MPU6050_PWR_MGMT_1, &tmp, 1);
+    ret = mpu6050_write(sensor, MPU6050_RA_PWR_MGMT_1, &tmp, 1);
     return ret;
 }
 
@@ -2085,13 +2084,13 @@ esp_err_t mpu6050_sleep(mpu6050_handle_t sensor)
 {
     esp_err_t ret;
     uint8_t tmp;
-    ret = mpu6050_read(sensor, MPU6050_PWR_MGMT_1, &tmp, 1);
+    ret = mpu6050_read(sensor, MPU6050_RA_PWR_MGMT_1, &tmp, 1);
     if (ESP_OK != ret)
     {
         return ret;
     }
     tmp |= BIT6;
-    ret = mpu6050_write(sensor, MPU6050_PWR_MGMT_1, &tmp, 1);
+    ret = mpu6050_write(sensor, MPU6050_RA_PWR_MGMT_1, &tmp, 1);
     return ret;
 }
 
@@ -2211,6 +2210,8 @@ esp_err_t mpu6050_config_interrupts(mpu6050_handle_t sensor, const mpu6050_int_c
     {
         int_pin_cfg |= BIT4;
     }
+
+    ESP_LOGI(TAG, "Writing interrupt config to 0x37: %d", int_pin_cfg);
 
     ret = mpu6050_write(sensor, MPU6050_INTR_PIN_CFG, &int_pin_cfg, 1);
 
@@ -2511,15 +2512,20 @@ bool mpu6050_write_bits(mpu6050_handle_t sensor, uint8_t regAddr, uint8_t bitSta
     uint8_t b;
     if (mpu6050_read(sensor, regAddr, &b, 1) == ESP_OK)
     {
+        ESP_LOGI(TAG, "Read from %d value: %d", regAddr, b);
+
         uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
         data <<= (bitStart - length + 1); // shift data into correct position
         data &= mask;                     // zero all non-important bits in data
         b &= ~(mask);                     // zero all important bits in existing byte
         b |= data;                        // combine data with existing byte
+
+        ESP_LOGI(TAG, "Now writing value: %d", b);
         return mpu6050_write(sensor, regAddr, &b, 1);
     }
     else
     {
+        ESP_LOGE(TAG, "Failed to read addr: %d", regAddr);
         return false;
     }
 }
@@ -2814,7 +2820,7 @@ void mpu6050_set_rate(mpu6050_handle_t sensor, uint8_t rate)
 void mpu6050_set_int_enabled(mpu6050_handle_t sensor, uint8_t enabled)
 {
     ESP_LOGI(TAG, "mpu6050_set_int_enabled. enaled: %d", enabled);
-    mpu6050_write(sensor, MPU6050_RA_INT_ENABLE, &enabled, 1);
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(sensor, MPU6050_RA_INT_ENABLE, &enabled, 1));
 }
 
 /** Set clock source setting.
@@ -3021,7 +3027,7 @@ bool mpu6050_write_prog_memory_block(mpu6050_handle_t sensor, const uint8_t *dat
  */
 void mpu6050_set_motion_detection_threshold(mpu6050_handle_t sensor, uint8_t threshold)
 {
-    mpu6050_write(sensor, MPU6050_RA_MOT_THR, &threshold, 1);
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(sensor, MPU6050_RA_MOT_THR, &threshold, 1));
 }
 
 /** Set zero motion detection event acceleration threshold.
@@ -3041,7 +3047,7 @@ void mpu6050_set_zero_motion_detection_threshold(mpu6050_handle_t sensor, uint8_
  */
 void mpu6050_set_motion_detection_duration(mpu6050_handle_t sensor, uint8_t duration)
 {
-    mpu6050_write(sensor, MPU6050_RA_MOT_DUR, &duration, 1);
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(sensor, MPU6050_RA_MOT_DUR, &duration, 1));
 }
 
 /** Set zero motion detection event duration threshold.
@@ -3060,12 +3066,6 @@ esp_err_t mpu6050_dmp_initialize(mpu6050_handle_t sensor)
     ESP_LOGI(TAG, "\n\nResetting MPU6050...");
     mpu6050_reset(sensor);
     vTaskDelay(50 / portTICK_PERIOD_MS); // wait after reset
-
-    // enable sleep mode and wake cycle
-    /*Serial.println(TAG, "Enabling sleep mode..."));
-    setSleepEnabled(true);
-    Serial.println(TAG, "Enabling wake cycle..."));
-    setWakeCycleEnabled(true);*/
 
     // disable sleep mode
     mpu6050_set_sleep_enabled(sensor, false);
@@ -3100,14 +3100,14 @@ esp_err_t mpu6050_dmp_initialize(mpu6050_handle_t sensor)
     ESP_LOGI(TAG, "Setting DMP and FIFO_OFLOW interrupts enabled...");
     mpu6050_set_int_enabled(sensor, 1 << MPU6050_INTERRUPT_FIFO_OFLOW_BIT | 1 << MPU6050_INTERRUPT_DMP_INT_BIT);
 
-    ESP_LOGI(TAG, "Setting sample rate to 200Hz...");
-    mpu6050_set_rate(sensor, 4); // 1khz / (1 + 4) = 200 Hz
+    ESP_LOGI(TAG, "Setting sample rate to 1000Hz...");
+    mpu6050_set_rate(sensor, 0); // 1000 Hz / (1 + 0) = 1000 Hz
 
     ESP_LOGI(TAG, "Setting external frame sync to TEMP_OUT_L[0]...");
     mpu6050_set_external_frame_sync(sensor, MPU6050_EXT_SYNC_TEMP_OUT_L);
 
     ESP_LOGI(TAG, "Setting DLPF bandwidth to 42Hz...");
-    mpu6050_set_DLPF_mode(sensor, MPU6050_DLPF_BW_42);
+    mpu6050_set_DLPF_mode(sensor, MPU6050_DLPF_BW_20);
 
     ESP_LOGI(TAG, "Setting gyro sensitivity to +/- 2000 deg/sec...");
     mpu6050_set_full_scale_gyro_range(sensor, MPU6050_GYRO_FS_2000);
@@ -3139,7 +3139,7 @@ esp_err_t mpu6050_dmp_initialize(mpu6050_handle_t sensor)
     mpu6050_set_zero_motion_detection_threshold(sensor, 156);
 
     ESP_LOGI(TAG, "Setting motion detection duration to 80...");
-    mpu6050_set_motion_detection_duration(sensor, 80);
+    mpu6050_set_motion_detection_duration(sensor, 5);
 
     ESP_LOGI(TAG, "Setting zero-motion detection duration to 0...");
     mpu6050_set_zero_motion_detection_duration(sensor, 0);
@@ -3237,22 +3237,83 @@ esp_err_t mpu6050_init(mpu6050_handle_t *const mpu6050, i2c_port_t port, int SDA
     *mpu6050 = mpu6050_create(port, MPU6050_I2C_ADDRESS);
     TEST_ASSERT_NOT_NULL_MESSAGE(mpu6050, "MPU6050 create returned NULL");
 
-    ESP_LOGI(TAG, "mpu6050_config");
-    ret = mpu6050_config(*mpu6050, ACCE_FS_4G, GYRO_FS_500DPS);
-    TEST_ASSERT_EQUAL(ESP_OK, ret);
+    // ESP_LOGI(TAG, "mpu6050_config");
+    // ret = mpu6050_config(*mpu6050, ACCE_FS_4G, GYRO_FS_500DPS);
+    // TEST_ASSERT_EQUAL(ESP_OK, ret);
 
-    ret = mpu6050_wake_up(*mpu6050);
-    TEST_ASSERT_EQUAL(ESP_OK, ret);
+    // ret = mpu6050_wake_up(*mpu6050);
+    // TEST_ASSERT_EQUAL(ESP_OK, ret);
 
     ret = mpu6050_get_deviceid(*mpu6050, &mpu6050_deviceid);
     TEST_ASSERT_EQUAL(ESP_OK, ret);
     TEST_ASSERT_EQUAL_UINT8_MESSAGE(MPU6050_WHO_AM_I_VAL, mpu6050_deviceid, "Who Am I register does not contain expected data");
 
-    mpu6050_dmp_initialize(*mpu6050);
+    // mpu6050_dmp_initialize(*mpu6050);
 
-    mpu6050_set_DMP_enabled(*mpu6050, true);
+    // mpu6050_set_DMP_enabled(*mpu6050, true);
 
-    mpu6050_calc_error(*mpu6050);
+    // mpu6050_calc_error(*mpu6050);
 
     return ret;
+}
+
+void mpu6050_init_motion_detection(mpu6050_handle_t mpu6050, uint8_t interrupt_pin)
+{
+
+    ESP_LOGI(TAG, "Begin motion detection initialization");
+
+    // reset device
+    ESP_LOGI(TAG, "\n\nResetting MPU6050...");
+    mpu6050_reset(mpu6050);
+    vTaskDelay(50 / portTICK_PERIOD_MS); // wait after reset
+
+    const uint8_t pwr_mgmt_1 = 0;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, MPU6050_RA_PWR_MGMT_1, &pwr_mgmt_1, 1));
+
+    const uint8_t pwr_mgmt_2 = 0b00000111;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, MPU6050_RA_PWR_MGMT_2, &pwr_mgmt_2, 1));
+
+    const uint8_t accel2 = 0b00000001;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, 0x1D, &accel2, 1));
+
+    mpu6050_set_int_enabled(mpu6050, 0x40);
+
+    uint8_t mot_detect_ctrl = 0b11000000;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, 0x69, &mot_detect_ctrl, 1));
+
+    uint8_t wom_thr = 100;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, 0x1F, &wom_thr, 1));
+
+    uint8_t wake_up_frequency = 0b00000111;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, 0x1E, &wake_up_frequency, 1));
+
+    const uint8_t pwr_mgmt_1_cycle = 0b00100000;
+    TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, MPU6050_RA_PWR_MGMT_1, &pwr_mgmt_1_cycle, 1));
+
+    // const uint8_t int_signal_paths = 0x07;
+    // TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, MPU6050_RA_SIGNAL_PATH_RESET, &int_signal_paths, 1));
+
+    // mpu6050_int_config_t config;
+    // config.interrupt_latch = INTERRUPT_LATCH_UNTIL_CLEARED;
+    // config.interrupt_pin = interrupt_pin;
+    // config.active_level = INTERRUPT_PIN_ACTIVE_HIGH;
+
+    // TEST_ASSERT_EQUAL(ESP_OK, mpu6050_config_interrupts(mpu6050, &config));
+
+    gpio_config_t int_gpio_config = {
+        .mode = GPIO_MODE_INPUT,
+        .intr_type = GPIO_INTR_POSEDGE,
+        .pin_bit_mask = (BIT0 << interrupt_pin)};
+
+    TEST_ASSERT_EQUAL(ESP_OK, gpio_config(&int_gpio_config));
+
+    // uint8_t accel_config = 0b00001001;
+    // Disable self-test, set accelerometer sensitivity & digital high-pass filter frequesncy
+    // TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, MPU6050_RA_ACCEL_CONFIG, &accel_config, 1));
+
+    // mpu6050_set_motion_detection_threshold(mpu6050, 2);
+
+    // mpu6050_set_motion_detection_duration(mpu6050, 1);
+
+    ESP_LOGI(TAG, "Motion detection initialized");
 }

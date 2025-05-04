@@ -130,6 +130,12 @@ void setups_buttons()
 	gpio_config(&io_conf);
 }
 
+int ets_printf(const char *fmt, ...);
+
+static void IRAM_ATTR on_motion(void* arg) {
+	ets_printf("We are moviiiiiing!");
+}
+
 void count_down()
 {
 	ESP_LOGI(TAG, "Count down");
@@ -324,6 +330,12 @@ void app_main(void)
 
 	mpu6050_init(&mpu6050, I2C_MASTER_NUM, I2C_MASTER_SDA_IO, I2C_MASTER_SCL_IO, I2C_MASTER_FREQ_HZ);
 
+	mpu6050_init_motion_detection(mpu6050, 4);
+
+	gpio_install_isr_service(0);
+
+	gpio_isr_handler_add(4, on_motion, NULL);
+
 	const float hit_theshold = 0.5;
 
 	VectorFloat prev_i;
@@ -336,36 +348,38 @@ void app_main(void)
 
 	while (true)
 	{
-		mpu6050_get_current_FIFO_packet(mpu6050);
-		mpu6050_get_orientation(&i, &j, &k);
-		printf("(%f, %f, %f)\n", k.x, k.y, k.z);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
 
-		float change = sqrt(powf(getDistance(i, prev_i), 2) + powf(getDistance(j, prev_j), 2) + powf(getDistance(k, prev_k), 2));
-		printf("loop\n");
-		switch (mode)
-		{
-		case 0:
-			if (gpio_get_level(HANDLE_SENSOR_GPIO) == 1)
-			{
-				count_down();
-				explode();
-			}
-			break;
-		case 1:
-			// if (change > hit_theshold)
-			// {
-			// 	//explode();
-			// }
-		case 2:
+		// mpu6050_get_current_FIFO_packet(mpu6050);
+		// mpu6050_get_orientation(&i, &j, &k);
+		// printf("(%f, %f, %f)\n", k.x, k.y, k.z);
 
-		default:
-			break;
-		}
+		// float change = sqrt(powf(getDistance(i, prev_i), 2) + powf(getDistance(j, prev_j), 2) + powf(getDistance(k, prev_k), 2));
+		// printf("loop\n");
+		// switch (mode)
+		// {
+		// case 0:
+		// 	if (gpio_get_level(HANDLE_SENSOR_GPIO) == 1)
+		// 	{
+		// 		count_down();
+		// 		explode();
+		// 	}
+		// 	break;
+		// case 1:
+		// 	// if (change > hit_theshold)
+		// 	// {
+		// 	// 	//explode();
+		// 	// }
+		// case 2:
 
-		if (gpio_get_level(MODE_BUTTON_GPIO) == 1) {
-			mode = (mode + 1) % 3;
-		}
+		// default:
+		// 	break;
+		// }
 
-		vTaskDelay(50 / portTICK_PERIOD_MS);
+		// if (gpio_get_level(MODE_BUTTON_GPIO) == 1) {
+		// 	mode = (mode + 1) % 3;
+		// }
+
+		// vTaskDelay(50 / portTICK_PERIOD_MS);
 	}
 }

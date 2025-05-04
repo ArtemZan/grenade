@@ -806,6 +806,7 @@ uint8_t mpu6050_dmp_get_quaternion(int16_t *buffer);
 
 esp_err_t mpu6050_init(mpu6050_handle_t* const mpu6050, i2c_port_t port, int SDA_pin, int SCL_pin, int I2C_frequency);
 
+void mpu6050_init_motion_detection(mpu6050_handle_t mpu6050, uint8_t interrupt_pin);
 
 #ifdef __cplusplus
 }
