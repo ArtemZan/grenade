@@ -3281,7 +3281,7 @@ void mpu6050_init_motion_detection(mpu6050_handle_t mpu6050, uint8_t interrupt_p
     uint8_t mot_detect_ctrl = 0b11000000;
     TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, 0x69, &mot_detect_ctrl, 1));
 
-    uint8_t wom_thr = 100;
+    uint8_t wom_thr = 255;
     TEST_ASSERT_EQUAL(ESP_OK, mpu6050_write(mpu6050, 0x1F, &wom_thr, 1));
 
     uint8_t wake_up_frequency = 0b00000111;
